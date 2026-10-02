@@ -1,43 +1,59 @@
 import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
-import { Redis } from '@upstash/redis';
 
 const app = new Hono();
 
 // ═══════════════════════════════════════════════════
-// Upstash Redis — مشترک بین Vercel و Suga
+// In-memory store (روی Render free tier کافیه)
+// برای persistence بیشتر، KV_URL و KV_TOKEN ست کن
 // ═══════════════════════════════════════════════════
-// Redis.fromEnv() به طور خودکار این‌ها را می‌خواند:
-//   UPSTASH_REDIS_REST_URL
-//   UPSTASH_REDIS_REST_TOKEN
-const redis = Redis.fromEnv();
+const KV_URL = process.env.KV_REST_API_URL || '';
+const KV_TOKEN = process.env.KV_REST_API_TOKEN || '';
+
+const memStore = new Map<string, string>();
 
 async function kvGet(key: string): Promise<string | null> {
-  try {
-    const value = await redis.get(key);
-    if (value === null || value === undefined) return null;
-    return typeof value === 'string' ? value : JSON.stringify(value);
-  } catch (e) {
-    console.error('Redis GET error:', e);
-    return null;
+  if (KV_URL) {
+    try {
+      const res = await fetch(`${KV_URL}/get/${key}`, {
+        headers: { Authorization: `Bearer ${KV_TOKEN}` },
+      });
+      const j = await res.json();
+      return j.result ?? null;
+    } catch { /* fallback */ }
   }
+  return memStore.get(key) ?? null;
 }
 
 async function kvSet(key: string, value: string) {
-  try {
-    await redis.set(key, value);
-  } catch (e) {
-    console.error('Redis SET error:', e);
+  if (KV_URL) {
+    try {
+      await fetch(`${KV_URL}/set/${key}`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${KV_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(value),
+      });
+      return;
+    } catch { /* fallback */ }
   }
+  memStore.set(key, value);
 }
 
 async function kvKeys(pattern: string): Promise<string[]> {
-  try {
-    return await redis.keys(pattern);
-  } catch (e) {
-    console.error('Redis KEYS error:', e);
-    return [];
+  const prefix = pattern.replace('*', '');
+  if (KV_URL) {
+    try {
+      const res = await fetch(`${KV_URL}/keys/${pattern}`, {
+        headers: { Authorization: `Bearer ${KV_TOKEN}` },
+      });
+      const j = await res.json();
+      return j.result ?? [];
+    } catch { /* fallback */ }
   }
+  return Array.from(memStore.keys()).filter(k => k.startsWith(prefix));
 }
 
 // ═══════════════════════════════════════════════════
@@ -46,7 +62,7 @@ async function kvKeys(pattern: string): Promise<string[]> {
 app.get('/', (c) => c.json({
   ok: true,
   service: 'sms-relay-render',
-  version: '2.0.0-upstash',
+  version: '1.0.0',
   ts: Date.now(),
 }));
 
@@ -179,5 +195,5 @@ app.all('/proxy', async (c) => {
 // ═══════════════════════════════════════════════════
 const port = parseInt(process.env.PORT || '10000');
 serve({ fetch: app.fetch, port }, () => {
-  console.log(`🚀 Server running on port ${port} (Upstash Redis)`);
+  console.log(`🚀 Server running on port ${port}`);
 });
