@@ -1,22 +1,21 @@
 {
   "name": "sms-relay-render",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "type": "module",
   "scripts": {
     "start": "tsx server.ts",
-    "dev": "tsx watch server.ts"
+    "dev": "tsx watch server.ts",
+    "build": "tsc --noEmit --skipLibCheck"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.0",
     "@upstash/redis": "^1.39.0",
+    "@types/node": "^22.0.0",
     "hono": "^4.6.0",
-    "tsx": "^4.19.0"
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
   },
   "engines": {
     "node": ">=20"
-  },
-  "devDependencies": {
-    "@types/node": "^26.6.4",
-    "typescript": "^7.0.2"
   }
 }
