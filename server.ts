@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
 import { Redis } from '@upstash/redis';
 
-const app = new Hono();
+const app = new Hono().basePath('/api');
 
 // ═══════════════════════════════════════════════════
 // Upstash Redis — مشترک بین Vercel و Suga
@@ -181,3 +181,5 @@ const port = parseInt(process.env.PORT || '10000');
 serve({ fetch: app.fetch, port }, () => {
   console.log(`🚀 Server running on port ${port} (Upstash Redis)`);
 });
+
+export default app;
