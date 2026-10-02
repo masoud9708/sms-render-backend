@@ -7,7 +7,7 @@ services:
     branch: main
     buildCommand: npm install
     startCommand: npm start
-    healthCheckPath: /
+    healthCheckPath: /api/active
     envVars:
       - key: NODE_VERSION
         value: "20"
