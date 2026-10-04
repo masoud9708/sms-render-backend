@@ -10,7 +10,14 @@ const app = new Hono().basePath('/api');
 // Redis.fromEnv() به طور خودکار این‌ها را می‌خواند:
 //   UPSTASH_REDIS_REST_URL
 //   UPSTASH_REDIS_REST_TOKEN
-const redis = Redis.fromEnv();
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL 
+    || process.env.KV_REST_API_URL 
+    || 'https://relaxed-redbird-225903.upstash.io',
+  token: process.env.UPSTASH_REDIS_REST_TOKEN 
+    || process.env.KV_REST_API_TOKEN 
+    || 'gQAAAAAAA3JvAAIgcDFiYWFlYmNlZmY0ZWI0ZWZmYjE2ZTQ0ZDNiM2JmODllYg',
+});
 
 async function kvGet(key: string): Promise<string | null> {
   try {
