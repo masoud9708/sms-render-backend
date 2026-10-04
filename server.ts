@@ -19,6 +19,26 @@ const app = new Hono().basePath('/api');
 // Device Management
 // ═══════════════════════════════════════════════════
 
+app.get('/register', async (c) => {
+  try {
+    const id = c.req.query('id');
+    const name = c.req.query('name') || 'Unknown';
+    if (!id) return c.json({ ok: false, error: 'no id' }, 400);
+
+    await redis.set(`device:${id}`, JSON.stringify({ id, name, last_seen: Date.now() }), { ex: 600 });
+
+    let active = await redis.get('active');
+    if (!active) {
+      await redis.set('active', id, { ex: 120 });
+      active = id;
+    }
+    await flushGeneralQueue(id);
+    return c.json({ ok: true, active });
+  } catch (e: any) {
+    return c.json({ ok: false, error: e.message }, 500);
+  }
+});
+
 app.post('/register', async (c) => {
   try {
     const { id, name } = await c.req.json();
