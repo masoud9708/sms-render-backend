@@ -174,6 +174,62 @@ app.all('/proxy', async (c) => {
   }
 });
 
+
+// ═══════════════════════════════════════════════════
+// /upstash — پروکسی Redis برای اپ اندروید
+// وقتی VPN روشن است، Vercel challenge می‌دهد،
+// پس اپ از Render به Upstash وصل می‌شود.
+// ═══════════════════════════════════════════════════
+app.all('/upstash', async (c) => {
+  try {
+    const cmd = (c.req.query('cmd') || '').toUpperCase();
+    const key = c.req.query('key') || '';
+    const value = c.req.query('value') || '';
+    const nx = c.req.query('nx') === 'true';
+    const exStr = c.req.query('ex');
+    const ex = exStr ? parseInt(exStr) : undefined;
+
+    if (!cmd || !key) {
+      return c.json({ error: 'cmd and key required' }, 400);
+    }
+
+    switch (cmd) {
+      case 'GET': {
+        const v = await kvGet(key);
+        return c.json({ result: v });
+      }
+      case 'SET': {
+        if (!value) return c.json({ error: 'value required' }, 400);
+        const opts: any = {};
+        if (nx) opts.nx = true;
+        if (ex) opts.ex = ex;
+        const r = await redis.set(key, value, opts);
+        return c.json({ result: r });
+      }
+      case 'DEL': {
+        const n = await redis.del(key);
+        return c.json({ result: n });
+      }
+      case 'LPUSH': {
+        const n = await redis.lpush(key, value);
+        return c.json({ result: n });
+      }
+      case 'RPOP': {
+        const v = await redis.rpop(key);
+        return c.json({ result: v });
+      }
+      case 'KEYS': {
+        const k = await kvKeys(key);
+        return c.json({ result: k });
+      }
+      default:
+        return c.json({ error: 'unsupported cmd: ' + cmd }, 400);
+    }
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500);
+  }
+});
+
 // ═══════════════════════════════════════════════════
 // Start server
 // ═══════════════════════════════════════════════════
